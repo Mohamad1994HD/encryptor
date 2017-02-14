@@ -1,7 +1,24 @@
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
-from enc import Operation, EncEngine
+from enc import Operation, EncEngine, InvalidOperationError
+
+
+class SuccessDialog(Gtk.MessageDialog):
+    def __init__(self, parent, msg):
+        Gtk.MessageDialog.__init__(self, parent, 0, Gtk.MessageType.INFO,
+                                   Gtk.ButtonsType.OK, "SUCCESS")
+        self.format_secondary_text(str(msg))
+        self.run()
+        self.destroy()
+
+class ErrorMessageDialog(Gtk.MessageDialog):
+    def __init__(self, parent, msg):
+        Gtk.MessageDialog.__init__(self, parent, 0, Gtk.MessageType.ERROR,
+                                   Gtk.ButtonsType.OK, "ERROR")
+        self.format_secondary_text(str(msg))
+        self.run()
+        self.destroy()
 
 class Application(Gtk.Window):
     class Filter(object):
@@ -113,7 +130,13 @@ class Application(Gtk.Window):
 
     def _on_run(self, widget):
         print "run"
-        self.engine.run(optype=self.operation)
+        try:
+            self.engine.run(optype=self.operation)
+            SuccessDialog(self, "{0} {1}".format(
+                "File" if self.ftype_slection == Operation.FILE_SELECT else "Folder",
+                "encrypted" if self.operation == Operation.ENCRYPT else "decrypted"))
+        except InvalidOperationError as e:
+            ErrorMessageDialog(self, e)
 
     def _on_file_select(self, widget):
         print "select your file/folder to encrypt"
@@ -132,7 +155,7 @@ class Application(Gtk.Window):
     def _on_target_file_picked(self, path):
         # set the encryption destination as path
         # extract paths from folder
-        self.engine.target_ = [path]
+        self.engine.target_ = path
         # update target entry text
         self.fpath_entry.set_text(path)
 

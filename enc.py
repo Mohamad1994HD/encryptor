@@ -1,5 +1,7 @@
+import cryptography
 from cryptography.fernet import Fernet
 from enum import Enum
+import os
 
 class Operation(Enum):
     ENCRYPT = 0
@@ -28,6 +30,10 @@ class FileInterface(object):
             print str(err)
             return None
 
+class InvalidOperationError(Exception):
+    def __init__(self, msg):
+        Exception.__init__(self, msg)
+
 class EncEngine(object):
     key = None
     kernel = None
@@ -43,7 +49,7 @@ class EncEngine(object):
     def load_key(self, path):
         # get key from file
         self.key = bytes(FileInterface.load(path, 'r'))
-        
+
         # re instantiate kernel
         self.kernel = Fernet(self.key)
         pass
@@ -62,30 +68,34 @@ class EncEngine(object):
 
     @target_.setter
     def target_(self, path):
-        self.target = path
+        self.target = []
+        if os.path.isdir(path):
+            for p_, subdirs, files in os.walk(path):
+                for name in files:
+                    self.target.append(os.path.join(path, name))
+        else:
+            self.target = [path]
+
 
     def run(self,
-            optype=Operation.ENCRYPT,
-            ftype=Operation.FILE_SELECT):
-        #
-        # f_list = []
-        #
-        # if ftype == Operation.FOLDER_SELECT:
-        # # Extract files from folder path
-        #     pass
-        # elif ftype == Operation.FILE_SELECT:
-        # # work on file path
-        #     f_list = [f]
+            optype=Operation.ENCRYPT):
+        if not self.kernel:
+            raise InvalidOperationError("""No Key was used, either generate a new key
+                                           \ror select existing key on your device""")
+        try:
+            for file in self.target:
+                self._encrpt(file, optype)
+        except cryptography.fernet.InvalidToken as err:
+            msg = """Error Invalid operation Maybe you are decrypting
+                     \runencrypted file or you are using invalid key"""
 
-        for file in self.target:
-            self._encrpt(file, optype)
+            raise InvalidOperationError(msg)
 
     def _encrpt(self, f, optype):
         token = None
 
         content = bytes(FileInterface.load(f,
                                            'rb'))
-        print type(content)
         if content:
             if optype == Operation.ENCRYPT:
                 token = self.kernel.encrypt(content)
