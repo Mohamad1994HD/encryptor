@@ -14,3 +14,4 @@ that you would generate automatically or you have previously
      install the Gtk+3, cryptography python modules and run the app.py
      
 
+![](encryptor.png)
